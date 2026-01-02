@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 import yaml
 
+from scripts.badges import generate_all_badges
 from scripts.check_files import check_archive_contents, check_github_repo_files
 from scripts.check_links import check_link
 from scripts.checksum import verify_checksum
@@ -262,6 +263,7 @@ def check_dataset(
 def run_monitor(
     config_path: Path,
     state_path: Path,
+    badges_path: Path,
     dry_run: bool = False,
 ) -> int:
     """Run the complete monitoring workflow.
@@ -269,6 +271,7 @@ def run_monitor(
     Args:
         config_path: Path to datasets configuration file.
         state_path: Path to state storage file.
+        badges_path: Path to badges output directory.
         dry_run: If True, don't create/close issues.
 
     Returns:
@@ -393,6 +396,11 @@ def run_monitor(
     # Save state
     state_store.save()
 
+    # Generate badges
+    logger.info("")
+    logger.info("Generating badges...")
+    generate_all_badges(state_store, badges_path)
+
     # Print summary
     logger.info("")
     logger.info("=" * 60)
@@ -446,6 +454,12 @@ def main() -> int:
         help="Path to state storage file",
     )
     parser.add_argument(
+        "--badges",
+        type=Path,
+        default=Path("badges"),
+        help="Path to badges output directory",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Run checks without creating/closing issues",
@@ -464,10 +478,12 @@ def main() -> int:
     logger.info("Dataset Health Monitor starting...")
     logger.info("Config: %s", args.config)
     logger.info("State: %s", args.state)
+    logger.info("Badges: %s", args.badges)
 
     return run_monitor(
         config_path=args.config,
         state_path=args.state,
+        badges_path=args.badges,
         dry_run=args.dry_run,
     )
 

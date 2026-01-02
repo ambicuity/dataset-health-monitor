@@ -10,6 +10,10 @@
 #
 # When issues are detected, GitHub Issues are automatically created
 # with detailed diagnostics and appropriate labels.
+#
+# Features:
+#   - Automatic uptime badge generation (shields.io compatible)
+#   - Rolling 30-day uptime tracking
 
 name: Dataset Health Monitor
 
@@ -115,21 +119,22 @@ jobs:
           python -m scripts.monitor \
             --config datasets/datasets.yaml \
             --state state/dataset_state.json \
+            --badges badges \
             $DRY_RUN_FLAG \
             $VERBOSE_FLAG
 
-      - name: Commit state changes
+      - name: Commit state and badge changes
         if: github.event_name != 'pull_request'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
           # Check if there are changes to commit
-          if git diff --quiet state/dataset_state.json; then
-            echo "No state changes to commit"
+          git add state/dataset_state.json badges/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
           else
-            git add state/dataset_state.json
-            git commit -m "chore: update dataset state [skip ci]"
+            git commit -m "chore: update dataset state and badges [skip ci]"
             git push
           fi
 
@@ -138,4 +143,11 @@ jobs:
         with:
           name: dataset-state
           path: state/dataset_state.json
+          retention-days: 30
+
+      - name: Upload badges artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dataset-badges
+          path: badges/
           retention-days: 30

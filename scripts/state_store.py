@@ -1,17 +1,51 @@
 """State persistence module for dataset health monitoring.
 
 This module manages the persistent state of dataset health checks,
-tracking checksums, file sizes, schema hashes, and timestamps.
+tracking checksums, file sizes, schema hashes, timestamps, and uptime history.
 """
 
 import json
 import logging
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+
+# Maximum number of days to keep in uptime history
+UPTIME_HISTORY_DAYS = 30
+
+
+def _parse_timestamp(timestamp: str) -> datetime:
+    """Parse an ISO timestamp string to a datetime object.
+
+    Handles both 'Z' suffix and '+00:00' timezone formats.
+
+    Args:
+        timestamp: ISO format timestamp string.
+
+    Returns:
+        datetime object with timezone info.
+    """
+    return datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+
+
+@dataclass
+class UptimeRecord:
+    """Record of a single health check for uptime tracking."""
+
+    timestamp: str
+    is_healthy: bool
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {"timestamp": self.timestamp, "is_healthy": self.is_healthy}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "UptimeRecord":
+        """Create UptimeRecord from dictionary."""
+        return cls(timestamp=data["timestamp"], is_healthy=data["is_healthy"])
 
 
 @dataclass
@@ -29,15 +63,81 @@ class DatasetState:
     last_error: Optional[str] = None
     consecutive_failures: int = 0
     issue_number: Optional[int] = None
+    uptime_history: list[UptimeRecord] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
-        return asdict(self)
+        data = asdict(self)
+        # Convert UptimeRecord objects to dicts
+        data["uptime_history"] = [r.to_dict() if isinstance(r, UptimeRecord) else r for r in self.uptime_history]
+        return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "DatasetState":
         """Create DatasetState from dictionary."""
-        return cls(**data)
+        # Handle uptime_history separately
+        uptime_history_data = data.pop("uptime_history", [])
+        uptime_history = [
+            UptimeRecord.from_dict(r) if isinstance(r, dict) else r
+            for r in uptime_history_data
+        ]
+        return cls(**data, uptime_history=uptime_history)
+
+    def add_uptime_record(self, is_healthy: bool) -> None:
+        """Add a new uptime record and prune old entries.
+
+        Args:
+            is_healthy: Whether the check was successful.
+        """
+        now = datetime.now(timezone.utc)
+        self.uptime_history.append(
+            UptimeRecord(timestamp=now.isoformat(), is_healthy=is_healthy)
+        )
+
+        # Prune records older than UPTIME_HISTORY_DAYS
+        cutoff = now - timedelta(days=UPTIME_HISTORY_DAYS)
+        self.uptime_history = [
+            r for r in self.uptime_history
+            if _parse_timestamp(r.timestamp) > cutoff
+        ]
+
+    def get_uptime_percentage(self, days: int = 30) -> float:
+        """Calculate uptime percentage over the specified period.
+
+        Args:
+            days: Number of days to calculate uptime for.
+
+        Returns:
+            Uptime percentage (0-100).
+        """
+        if not self.uptime_history:
+            return 100.0 if self.is_healthy else 0.0
+
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        recent_records = [
+            r for r in self.uptime_history
+            if _parse_timestamp(r.timestamp) > cutoff
+        ]
+
+        if not recent_records:
+            return 100.0 if self.is_healthy else 0.0
+
+        healthy_count = sum(1 for r in recent_records if r.is_healthy)
+        return (healthy_count / len(recent_records)) * 100
+
+    def get_health_status(self) -> str:
+        """Get the current health status string.
+
+        Returns:
+            'healthy', 'degraded', or 'broken'.
+        """
+        if self.is_healthy:
+            return "healthy"
+
+        uptime = self.get_uptime_percentage(days=7)
+        if uptime >= 50:
+            return "degraded"
+        return "broken"
 
 
 @dataclass
@@ -171,6 +271,9 @@ class StateStore:
             state.datasets[name] = dataset_state
 
         dataset_state.last_check_timestamp = now
+
+        # Add uptime record for tracking
+        dataset_state.add_uptime_record(is_healthy)
 
         if is_healthy:
             dataset_state.last_success_timestamp = now

@@ -4,6 +4,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Datasets Health](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/ambicuity/dataset-health-monitor/main/badges/summary.json)](https://github.com/ambicuity/dataset-health-monitor)
 
 **Continuous monitoring for ML datasets with automatic GitHub issue creation.**
 
@@ -18,6 +19,7 @@ Dataset Health Monitor is a "CI for datasets" - a production-grade tool that con
 - **Automatic Issue Creation**: Opens GitHub Issues with detailed diagnostics
 - **Smart Issue Management**: Prevents spam and auto-closes issues on recovery
 - **State Persistence**: Tracks dataset health history
+- **Uptime Badges**: Live shields.io badges showing dataset health and 30-day uptime
 
 ## 📁 Repository Structure
 
@@ -37,8 +39,11 @@ Dataset Health Monitor is a "CI for datasets" - a production-grade tool that con
 │   ├── check_files.py                  # File existence checks
 │   ├── checksum.py                     # SHA256 verification
 │   ├── schema_check.py                 # CSV/JSON schema validation
-│   ├── state_store.py                  # State persistence
+│   ├── state_store.py                  # State persistence with uptime tracking
+│   ├── badges.py                       # Badge generation (shields.io)
 │   └── open_issue.py                   # GitHub Issue management
+├── badges/
+│   └── *.json                          # Generated badge JSON files
 ├── state/
 │   └── dataset_state.json              # Persisted state (auto-updated)
 └── .github/
@@ -323,6 +328,48 @@ The state file (`state/dataset_state.json`) tracks:
   }
 }
 ```
+
+## 📊 Uptime Badges
+
+Dataset Health Monitor automatically generates shields.io-compatible badges showing:
+
+- **Uptime Badge**: 30-day rolling uptime percentage
+- **Status Badge**: Current health status (healthy/degraded/broken)
+- **Summary Badge**: Overall health of all monitored datasets
+
+### Using Badges in Your README
+
+Add badges to your documentation using the shields.io endpoint format:
+
+```markdown
+<!-- Summary badge for all datasets -->
+![Datasets Health](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/OWNER/REPO/main/badges/summary.json)
+
+<!-- Per-dataset uptime badge -->
+![Dataset Uptime](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/OWNER/REPO/main/badges/DATASET_NAME-uptime.json)
+
+<!-- Per-dataset status badge -->
+![Dataset Status](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/OWNER/REPO/main/badges/DATASET_NAME-status.json)
+```
+
+### Badge Colors
+
+| Uptime % | Color |
+|----------|-------|
+| ≥99% | ![brightgreen](https://img.shields.io/badge/-brightgreen-brightgreen) |
+| ≥95% | ![green](https://img.shields.io/badge/-green-green) |
+| ≥90% | ![yellowgreen](https://img.shields.io/badge/-yellowgreen-yellowgreen) |
+| ≥80% | ![yellow](https://img.shields.io/badge/-yellow-yellow) |
+| ≥70% | ![orange](https://img.shields.io/badge/-orange-orange) |
+| <70% | ![red](https://img.shields.io/badge/-red-red) |
+
+### Status Meanings
+
+| Status | Description | Color |
+|--------|-------------|-------|
+| `healthy` | Dataset passed all checks | ![brightgreen](https://img.shields.io/badge/-brightgreen-brightgreen) |
+| `degraded` | Currently failing but >50% uptime in last 7 days | ![yellow](https://img.shields.io/badge/-yellow-yellow) |
+| `broken` | Currently failing with <50% uptime in last 7 days | ![red](https://img.shields.io/badge/-red-red) |
 
 ## 🤝 Contributing
 

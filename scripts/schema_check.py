@@ -1,7 +1,7 @@
 """Schema validation module for CSV and JSON datasets.
 
 This module provides functionality to detect and compare
-schema changes in CSV and JSON files.
+schema changes in CSV and JSON files, including type inference.
 """
 
 import csv
@@ -32,10 +32,12 @@ class SchemaCheckResult:
     current_schema: Optional[list[str]] = None
     expected_schema: Optional[list[str]] = None
     schema_hash: Optional[str] = None
+    column_types: dict[str, str] = field(default_factory=dict)
     is_valid: bool = False
     schema_changed: bool = False
     schema_diff: list[str] = field(default_factory=list)
     error_message: Optional[str] = None
+    raw_content: Optional[str] = None  # For type inference
 
 
 def detect_file_type(url: str) -> Optional[str]:
@@ -192,11 +194,16 @@ def check_schema(
             # Fallback: decode with replacement characters
             content = content_bytes.decode("utf-8", errors="replace")
 
+        # Store raw content for type inference
+        result.raw_content = content
+
         # Extract schema based on file type
         if file_type == "csv":
             result.current_schema = extract_csv_schema(content)
+            result.column_types = infer_csv_types(content, result.current_schema)
         elif file_type == "json":
             result.current_schema = extract_json_schema(content)
+            result.column_types = infer_json_types(content, result.current_schema)
 
         if not result.current_schema:
             result.error_message = "Could not extract schema from file"
@@ -258,3 +265,189 @@ def check_schema(
         logger.error("✗ Schema check failed for %s: %s", dataset_name, e)
 
     return result
+
+
+def infer_csv_types(content: str, columns: list[str]) -> dict[str, str]:
+    """Infer column types from CSV content.
+
+    Args:
+        content: CSV content string.
+        columns: List of column names.
+
+    Returns:
+        Dictionary mapping column names to inferred types.
+    """
+    if not columns:
+        return {}
+
+    types: dict[str, str] = {}
+
+    try:
+        reader = csv.DictReader(StringIO(content))
+        # Sample first 100 rows
+        sample_rows = []
+        for i, row in enumerate(reader):
+            if i >= 100:
+                break
+            sample_rows.append(row)
+
+        if not sample_rows:
+            return {col: "unknown" for col in columns}
+
+        for col in columns:
+            values = [row.get(col, "") for row in sample_rows if row.get(col)]
+            types[col] = _infer_type_from_values(values)
+
+    except Exception as e:
+        logger.debug("Failed to infer CSV column types: %s", e)
+        return {col: "unknown" for col in columns}
+
+    return types
+
+
+def infer_json_types(content: str, columns: list[str]) -> dict[str, str]:
+    """Infer field types from JSON content.
+
+    Args:
+        content: JSON content string.
+        columns: List of field names.
+
+    Returns:
+        Dictionary mapping field names to inferred types.
+    """
+    if not columns:
+        return {}
+
+    types: dict[str, str] = {}
+
+    try:
+        data = json.loads(content)
+
+        # Get sample items
+        if isinstance(data, list) and len(data) > 0:
+            sample = data[:100]
+        elif isinstance(data, dict):
+            sample = [data]
+        else:
+            return {col: "unknown" for col in columns}
+
+        for col in columns:
+            values = []
+            for item in sample:
+                if isinstance(item, dict) and col in item:
+                    values.append(item[col])
+
+            if values:
+                types[col] = _infer_json_type(values)
+            else:
+                types[col] = "unknown"
+
+    except Exception as e:
+        logger.debug("Failed to infer JSON field types: %s", e)
+        return {col: "unknown" for col in columns}
+
+    return types
+
+
+def _infer_type_from_values(values: list[str]) -> str:
+    """Infer data type from a list of string values.
+
+    Args:
+        values: List of string values to analyze.
+
+    Returns:
+        Inferred type name.
+    """
+    if not values:
+        return "unknown"
+
+    int_count = 0
+    float_count = 0
+    bool_count = 0
+    date_count = 0
+    total_valid = 0
+
+    for val in values:
+        val = val.strip()
+        if not val:
+            continue
+
+        total_valid += 1
+
+        # Check integer
+        try:
+            int(val)
+            int_count += 1
+            continue
+        except ValueError:
+            pass
+
+        # Check float
+        try:
+            float(val)
+            float_count += 1
+            continue
+        except ValueError:
+            pass
+
+        # Check boolean
+        if val.lower() in ("true", "false", "yes", "no", "0", "1"):
+            bool_count += 1
+            continue
+
+        # Check date-like patterns
+        if any(c in val for c in ["-", "/", ":"]) and len(val) >= 8:
+            date_count += 1
+
+    if total_valid == 0:
+        return "unknown"
+
+    threshold = 0.8
+
+    if int_count / total_valid >= threshold:
+        return "integer"
+    if (int_count + float_count) / total_valid >= threshold:
+        return "float"
+    if bool_count / total_valid >= threshold:
+        return "boolean"
+    if date_count / total_valid >= threshold:
+        return "datetime"
+
+    return "string"
+
+
+def _infer_json_type(values: list) -> str:
+    """Infer data type from a list of JSON values.
+
+    Args:
+        values: List of values to analyze.
+
+    Returns:
+        Inferred type name.
+    """
+    if not values:
+        return "unknown"
+
+    type_counts: dict[str, int] = {}
+
+    for val in values:
+        if val is None:
+            continue
+        elif isinstance(val, bool):
+            type_counts["boolean"] = type_counts.get("boolean", 0) + 1
+        elif isinstance(val, int):
+            type_counts["integer"] = type_counts.get("integer", 0) + 1
+        elif isinstance(val, float):
+            type_counts["float"] = type_counts.get("float", 0) + 1
+        elif isinstance(val, str):
+            type_counts["string"] = type_counts.get("string", 0) + 1
+        elif isinstance(val, list):
+            type_counts["array"] = type_counts.get("array", 0) + 1
+        elif isinstance(val, dict):
+            type_counts["object"] = type_counts.get("object", 0) + 1
+
+    if not type_counts:
+        return "null"
+
+    # Return most common type
+    return max(type_counts.items(), key=lambda x: x[1])[0]

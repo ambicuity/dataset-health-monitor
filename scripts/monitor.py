@@ -25,6 +25,7 @@ from scripts.open_issue import (
     get_labels_for_errors,
 )
 from scripts.schema_check import check_schema
+from scripts.schema_drift import SchemaHistoryStore, generate_drift_report
 from scripts.state_store import StateStore
 
 logger = logging.getLogger(__name__)
@@ -88,6 +89,8 @@ class CheckResult:
     file_sizes: dict[str, int] = field(default_factory=dict)
     schema_hash: Optional[str] = None
     schema: Optional[list[str]] = None
+    column_types: dict[str, str] = field(default_factory=dict)
+    schema_drift_report: Optional[str] = None
 
 
 def load_datasets_config(config_path: Path) -> list[DatasetConfig]:
@@ -125,12 +128,14 @@ def load_datasets_config(config_path: Path) -> list[DatasetConfig]:
 def check_dataset(
     config: DatasetConfig,
     state_store: StateStore,
+    schema_history: SchemaHistoryStore,
 ) -> CheckResult:
     """Run all health checks for a single dataset.
 
     Args:
         config: Dataset configuration.
         state_store: State store for comparison.
+        schema_history: Schema history store for drift detection.
 
     Returns:
         CheckResult with all check outcomes.
@@ -237,6 +242,19 @@ def check_dataset(
 
         result.schema_hash = schema_result.schema_hash
         result.schema = schema_result.current_schema
+        result.column_types = schema_result.column_types
+
+        # Track schema drift
+        if schema_result.current_schema:
+            snapshot, drift = schema_history.add_snapshot(
+                config.name,
+                schema_result.current_schema,
+                schema_result.column_types,
+            )
+
+            if drift and drift.has_changes:
+                logger.info("Schema drift detected for %s", config.name)
+                result.schema_drift_report = drift.to_markdown()
 
         if not schema_result.is_valid:
             result.is_healthy = False
@@ -264,6 +282,7 @@ def run_monitor(
     config_path: Path,
     state_path: Path,
     badges_path: Path,
+    schema_history_path: Path,
     dry_run: bool = False,
 ) -> int:
     """Run the complete monitoring workflow.
@@ -272,6 +291,7 @@ def run_monitor(
         config_path: Path to datasets configuration file.
         state_path: Path to state storage file.
         badges_path: Path to badges output directory.
+        schema_history_path: Path to schema history directory.
         dry_run: If True, don't create/close issues.
 
     Returns:
@@ -279,6 +299,9 @@ def run_monitor(
     """
     # Initialize state store
     state_store = StateStore(state_path)
+
+    # Initialize schema history store
+    schema_history = SchemaHistoryStore(schema_history_path)
 
     # Load dataset configurations
     datasets = load_datasets_config(config_path)
@@ -289,11 +312,16 @@ def run_monitor(
     # Track overall health
     all_healthy = True
     results: list[CheckResult] = []
+    schema_drifts: list[tuple[str, str]] = []  # (dataset_name, drift_report)
 
     # Check each dataset
     for config in datasets:
-        result = check_dataset(config, state_store)
+        result = check_dataset(config, state_store, schema_history)
         results.append(result)
+
+        # Track schema drift for reporting
+        if result.schema_drift_report:
+            schema_drifts.append((config.name, result.schema_drift_report))
 
         if not result.is_healthy:
             all_healthy = False
@@ -311,13 +339,18 @@ def run_monitor(
                             "schema": prev_state.schema,
                         }
 
-                    # Create issue
+                    # Create issue body with schema drift if available
                     issue_body = format_issue_body(
                         config.name,
                         config.source_url,
                         result.errors,
                         last_good,
                     )
+
+                    # Append schema drift report if available
+                    if result.schema_drift_report:
+                        issue_body += "\n\n---\n\n" + result.schema_drift_report
+
                     labels = get_labels_for_errors(result.errors)
 
                     issue_result = create_issue(
@@ -401,6 +434,18 @@ def run_monitor(
     logger.info("Generating badges...")
     generate_all_badges(state_store, badges_path)
 
+    # Generate schema drift reports
+    if schema_drifts:
+        logger.info("")
+        logger.info("Generating schema drift reports...")
+        reports_dir = schema_history_path / "reports"
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        for dataset_name, drift_report in schema_drifts:
+            report_path = reports_dir / f"{dataset_name}_drift_report.md"
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write(drift_report)
+            logger.info("Generated drift report: %s", report_path)
+
     # Print summary
     logger.info("")
     logger.info("=" * 60)
@@ -411,6 +456,9 @@ def run_monitor(
     unhealthy_count = len(results) - healthy_count
     logger.info("Healthy: %d", healthy_count)
     logger.info("Unhealthy: %d", unhealthy_count)
+
+    if schema_drifts:
+        logger.info("Schema drifts detected: %d", len(schema_drifts))
 
     if unhealthy_count > 0:
         logger.info("")
@@ -460,6 +508,12 @@ def main() -> int:
         help="Path to badges output directory",
     )
     parser.add_argument(
+        "--schema-history",
+        type=Path,
+        default=Path("state/schema_history"),
+        help="Path to schema history directory",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Run checks without creating/closing issues",
@@ -479,11 +533,13 @@ def main() -> int:
     logger.info("Config: %s", args.config)
     logger.info("State: %s", args.state)
     logger.info("Badges: %s", args.badges)
+    logger.info("Schema History: %s", args.schema_history)
 
     return run_monitor(
         config_path=args.config,
         state_path=args.state,
         badges_path=args.badges,
+        schema_history_path=args.schema_history,
         dry_run=args.dry_run,
     )
 

@@ -16,7 +16,8 @@ Dataset Health Monitor is a "CI for datasets" - a production-grade tool that con
 - **File Existence Checks**: Verify expected files exist in archives or repositories
 - **Checksum Verification**: SHA256 integrity validation
 - **Schema Validation**: Detect CSV/JSON header changes
-- **Automatic Issue Creation**: Opens GitHub Issues with detailed diagnostics
+- **Schema Drift Visualization**: Track and visualize schema changes over time with markdown diff tables
+- **Automatic Issue Creation**: Opens GitHub Issues with detailed diagnostics and schema drift reports
 - **Smart Issue Management**: Prevents spam and auto-closes issues on recovery
 - **State Persistence**: Tracks dataset health history
 - **Uptime Badges**: Live shields.io badges showing dataset health and 30-day uptime
@@ -38,14 +39,17 @@ Dataset Health Monitor is a "CI for datasets" - a production-grade tool that con
 │   ├── check_links.py                  # URL validation
 │   ├── check_files.py                  # File existence checks
 │   ├── checksum.py                     # SHA256 verification
-│   ├── schema_check.py                 # CSV/JSON schema validation
+│   ├── schema_check.py                 # CSV/JSON schema validation with type inference
+│   ├── schema_drift.py                 # Schema drift detection and visualization
 │   ├── state_store.py                  # State persistence with uptime tracking
 │   ├── badges.py                       # Badge generation (shields.io)
 │   └── open_issue.py                   # GitHub Issue management
 ├── badges/
 │   └── *.json                          # Generated badge JSON files
 ├── state/
-│   └── dataset_state.json              # Persisted state (auto-updated)
+│   ├── dataset_state.json              # Persisted state (auto-updated)
+│   └── schema_history/                 # Schema history and drift reports
+│       └── *_schema_history.json       # Per-dataset schema history
 └── .github/
     └── workflows/
         └── dataset_monitor.yml         # GitHub Actions workflow
@@ -370,6 +374,60 @@ Add badges to your documentation using the shields.io endpoint format:
 | `healthy` | Dataset passed all checks | ![brightgreen](https://img.shields.io/badge/-brightgreen-brightgreen) |
 | `degraded` | Currently failing but >50% uptime in last 7 days | ![yellow](https://img.shields.io/badge/-yellow-yellow) |
 | `broken` | Currently failing with <50% uptime in last 7 days | ![red](https://img.shields.io/badge/-red-red) |
+
+## 📈 Schema Drift Visualization
+
+Dataset Health Monitor tracks schema changes over time for CSV and JSON datasets, providing:
+
+### Automatic Type Inference
+
+Column types are automatically inferred:
+- **CSV**: Analyzes sample values to detect integer, float, boolean, datetime, or string types
+- **JSON**: Uses native JSON types (string, integer, float, boolean, array, object)
+
+### Schema Drift Detection
+
+When a schema change is detected:
+1. A markdown diff report is generated highlighting:
+   - ➕ **Added columns** with their types
+   - ➖ **Removed columns** with previous types
+   - 🔄 **Type changes** showing old → new types
+2. The report is automatically attached to GitHub Issues
+3. Schema history is stored for trend analysis
+
+### Example Schema Drift Report
+
+```markdown
+## Schema Drift Report: `my-dataset`
+
+### ➕ Added Columns
+
+| Column Name | Type |
+|-------------|------|
+| `new_field` | string |
+
+### ➖ Removed Columns
+
+| Column Name | Previous Type |
+|-------------|---------------|
+| `old_field` | integer |
+
+### Full Schema Comparison
+
+| Column | Status | Type |
+|--------|--------|------|
+| `id` | ⚪ Unchanged | integer |
+| `name` | ⚪ Unchanged | string |
+| `new_field` | 🟢 Added | string |
+| `old_field` | 🔴 Removed | integer |
+```
+
+### Schema History Storage
+
+Schema history is stored in `state/schema_history/`:
+- One JSON file per dataset tracking up to 50 schema snapshots
+- Each snapshot includes timestamp, schema hash, columns, and types
+- Automatic pruning of old entries
 
 ## 🤝 Contributing
 

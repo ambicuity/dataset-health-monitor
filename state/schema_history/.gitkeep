@@ -1,0 +1,5 @@
+# Schema History
+
+This directory stores schema history for dataset drift detection.
+
+Each dataset has its own JSON file tracking schema changes over time.

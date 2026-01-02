@@ -120,21 +120,22 @@ jobs:
             --config datasets/datasets.yaml \
             --state state/dataset_state.json \
             --badges badges \
+            --schema-history state/schema_history \
             $DRY_RUN_FLAG \
             $VERBOSE_FLAG
 
-      - name: Commit state and badge changes
+      - name: Commit state, badge, and schema history changes
         if: github.event_name != 'pull_request'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
           # Check if there are changes to commit
-          git add state/dataset_state.json badges/
+          git add state/ badges/
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "chore: update dataset state and badges [skip ci]"
+            git commit -m "chore: update dataset state, badges, and schema history [skip ci]"
             git push
           fi
 
@@ -150,4 +151,11 @@ jobs:
         with:
           name: dataset-badges
           path: badges/
+          retention-days: 30
+
+      - name: Upload schema history artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-history
+          path: state/schema_history/
           retention-days: 30

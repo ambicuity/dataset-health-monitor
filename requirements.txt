@@ -5,3 +5,6 @@
 # Core dependencies
 requests>=2.31.0
 pyyaml>=6.0.1
+
+# HuggingFace datasets support (Feature 3)
+datasets>=2.14.0

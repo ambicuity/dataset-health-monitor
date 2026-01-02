@@ -17,6 +17,7 @@ from scripts.badges import generate_all_badges
 from scripts.check_files import check_archive_contents, check_github_repo_files
 from scripts.check_links import check_link
 from scripts.checksum import verify_checksum
+from scripts.huggingface import check_huggingface_dataset, is_huggingface_source
 from scripts.open_issue import (
     close_issue,
     create_issue,
@@ -25,7 +26,7 @@ from scripts.open_issue import (
     get_labels_for_errors,
 )
 from scripts.schema_check import check_schema
-from scripts.schema_drift import SchemaHistoryStore, generate_drift_report
+from scripts.schema_drift import SchemaHistoryStore
 from scripts.state_store import StateStore
 
 logger = logging.getLogger(__name__)
@@ -62,19 +63,24 @@ class DatasetConfig:
     schema: Optional[list[str]] = None
     frequency: str = "daily"
     branch: str = "main"
+    split: Optional[str] = None  # For HuggingFace datasets
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "DatasetConfig":
         """Create DatasetConfig from dictionary."""
+        # Support both 'source_url' and 'source' for HuggingFace compatibility
+        source = data.get("source_url") or data.get("source", "")
+
         return cls(
             name=data["name"],
             owner=data.get("owner", "unknown"),
-            source_url=data["source_url"],
+            source_url=source,
             expected_files=data.get("expected_files", []),
             checksum=data.get("checksum"),
             schema=data.get("schema"),
             frequency=data.get("frequency", "daily"),
             branch=data.get("branch", "main"),
+            split=data.get("split"),
         )
 
 
@@ -125,6 +131,74 @@ def load_datasets_config(config_path: Path) -> list[DatasetConfig]:
     return datasets
 
 
+def check_huggingface(
+    config: DatasetConfig,
+    schema_history: SchemaHistoryStore,
+) -> CheckResult:
+    """Run health checks for a HuggingFace dataset.
+
+    Args:
+        config: Dataset configuration.
+        schema_history: Schema history store for drift detection.
+
+    Returns:
+        CheckResult with check outcomes.
+    """
+    result = CheckResult(
+        dataset_name=config.name,
+        is_healthy=True,
+    )
+
+    logger.info("=" * 60)
+    logger.info("Checking HuggingFace dataset: %s", config.name)
+    logger.info("Source: %s", config.source_url)
+    logger.info("=" * 60)
+
+    # Check the HuggingFace dataset
+    hf_result = check_huggingface_dataset(
+        source=config.source_url,
+        dataset_name=config.name,
+        expected_schema=config.schema,
+        expected_split=config.split,
+    )
+
+    if not hf_result.is_available:
+        result.is_healthy = False
+        result.errors.append(f"HuggingFace dataset not available: {hf_result.error_message}")
+        return result
+
+    if not hf_result.is_valid:
+        result.is_healthy = False
+        result.errors.append(hf_result.error_message or "Unknown error")
+        return result
+
+    # Store results
+    result.schema = hf_result.schema
+    result.schema_hash = hf_result.schema_hash
+    result.column_types = hf_result.column_types
+    result.checksum = hf_result.checksum
+
+    # Track schema drift for HuggingFace datasets
+    if hf_result.schema:
+        snapshot, drift = schema_history.add_snapshot(
+            config.name,
+            hf_result.schema,
+            hf_result.column_types,
+        )
+
+        if drift and drift.has_changes:
+            logger.info("Schema drift detected for %s", config.name)
+            result.schema_drift_report = drift.to_markdown()
+
+    logger.info("✓ HuggingFace dataset %s is HEALTHY", config.name)
+    logger.info("  Splits: %s", ", ".join(hf_result.splits))
+    logger.info("  Features: %d", len(hf_result.schema or []))
+    if hf_result.num_rows:
+        logger.info("  Rows: %d", hf_result.num_rows)
+
+    return result
+
+
 def check_dataset(
     config: DatasetConfig,
     state_store: StateStore,
@@ -140,6 +214,10 @@ def check_dataset(
     Returns:
         CheckResult with all check outcomes.
     """
+    # Check if this is a HuggingFace dataset
+    if is_huggingface_source(config.source_url):
+        return check_huggingface(config, schema_history)
+
     result = CheckResult(
         dataset_name=config.name,
         is_healthy=True,

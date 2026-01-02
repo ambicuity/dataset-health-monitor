@@ -17,6 +17,7 @@ Dataset Health Monitor is a "CI for datasets" - a production-grade tool that con
 - **Checksum Verification**: SHA256 integrity validation
 - **Schema Validation**: Detect CSV/JSON header changes
 - **Schema Drift Visualization**: Track and visualize schema changes over time with markdown diff tables
+- **HuggingFace Dataset Support**: Monitor HuggingFace datasets with schema and availability checks
 - **Automatic Issue Creation**: Opens GitHub Issues with detailed diagnostics and schema drift reports
 - **Smart Issue Management**: Prevents spam and auto-closes issues on recovery
 - **State Persistence**: Tracks dataset health history
@@ -41,6 +42,7 @@ Dataset Health Monitor is a "CI for datasets" - a production-grade tool that con
 │   ├── checksum.py                     # SHA256 verification
 │   ├── schema_check.py                 # CSV/JSON schema validation with type inference
 │   ├── schema_drift.py                 # Schema drift detection and visualization
+│   ├── huggingface.py                  # HuggingFace dataset support
 │   ├── state_store.py                  # State persistence with uptime tracking
 │   ├── badges.py                       # Badge generation (shields.io)
 │   └── open_issue.py                   # GitHub Issue management
@@ -428,6 +430,74 @@ Schema history is stored in `state/schema_history/`:
 - One JSON file per dataset tracking up to 50 schema snapshots
 - Each snapshot includes timestamp, schema hash, columns, and types
 - Automatic pruning of old entries
+
+## 🤗 HuggingFace Dataset Support
+
+Dataset Health Monitor natively supports monitoring HuggingFace datasets using the `huggingface://` protocol.
+
+### Configuration
+
+```yaml
+datasets:
+  # Basic HuggingFace dataset
+  - name: imdb
+    owner: stanfordnlp
+    source: huggingface://stanfordnlp/imdb
+    split: train
+    frequency: weekly
+
+  # With schema validation
+  - name: squad
+    owner: huggingface
+    source: huggingface://squad
+    split: train
+    schema:
+      - id
+      - title
+      - context
+      - question
+      - answers
+    frequency: weekly
+
+  # Dataset with specific config
+  - name: glue-sst2
+    owner: huggingface
+    source: huggingface://glue/sst2
+    split: train
+    frequency: weekly
+```
+
+### URL Format
+
+```
+huggingface://owner/dataset_name
+huggingface://owner/dataset_name/config
+huggingface://owner/dataset_name/config/split
+```
+
+### Features
+
+- **Availability Check**: Verifies the dataset is accessible on HuggingFace Hub
+- **Schema Extraction**: Automatically extracts feature names and types
+- **Schema Validation**: Validates expected features exist in the dataset
+- **Schema Drift**: Tracks schema changes over time (same as HTTP datasets)
+- **Metadata Checksum**: Computes checksum based on dataset metadata
+- **Split Information**: Reports available splits and row counts
+- **Cache Management**: Respects HuggingFace cache for efficiency
+
+### Installation
+
+HuggingFace support requires the `datasets` library:
+
+```bash
+pip install datasets>=2.14.0
+```
+
+Or install all dependencies:
+
+```bash
+pip install -r requirements.txt
+```
 
 ## 🤝 Contributing
 

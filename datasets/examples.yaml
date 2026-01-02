@@ -104,15 +104,46 @@ datasets:
     frequency: weekly
 
   # ----------------------------------------------------------
-  # Example 9: Hugging Face dataset
+  # Example 9: HuggingFace Dataset (basic)
   # ----------------------------------------------------------
-  - name: huggingface-dataset
-    owner: huggingface
-    source_url: https://huggingface.co/datasets/squad/resolve/main/squad.py
+  # Monitor a HuggingFace dataset for availability and schema
+  - name: imdb-sentiment
+    owner: stanfordnlp
+    source: huggingface://stanfordnlp/imdb
+    split: train
     frequency: weekly
 
   # ----------------------------------------------------------
-  # Example 10: Raw GitHub file
+  # Example 10: HuggingFace Dataset with schema validation
+  # ----------------------------------------------------------
+  # Validate specific features exist in the dataset
+  - name: squad-qa
+    owner: huggingface
+    source: huggingface://squad
+    split: train
+    schema:
+      - id
+      - title
+      - context
+      - question
+      - answers
+    frequency: weekly
+
+  # ----------------------------------------------------------
+  # Example 11: HuggingFace Dataset with config
+  # ----------------------------------------------------------
+  # Some datasets have multiple configurations
+  - name: glue-sst2
+    owner: huggingface
+    source: huggingface://glue/sst2
+    split: train
+    schema:
+      - sentence
+      - label
+    frequency: weekly
+
+  # ----------------------------------------------------------
+  # Example 12: Raw GitHub file
   # ----------------------------------------------------------
   - name: github-raw-file
     owner: community

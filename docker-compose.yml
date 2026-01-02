@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  dataset-health-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - GITHUB_APP_ID=${GITHUB_APP_ID}
+      - GITHUB_PRIVATE_KEY=${GITHUB_PRIVATE_KEY}
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+      - HOST=0.0.0.0
+      - PORT=8000
+    volumes:
+      # Mount state directory for persistence
+      - ./state:/app/state
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Use with ngrok for local development
+  # ngrok:
+  #   image: ngrok/ngrok:latest
+  #   command: http dataset-health-monitor:8000
+  #   environment:
+  #     - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+  #   ports:
+  #     - "4040:4040"
+  #   depends_on:
+  #     - dataset-health-monitor

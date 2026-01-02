@@ -48,3 +48,14 @@ dmypy.json
 # OS
 .DS_Store
 Thumbs.db
+
+# GitHub App secrets
+*.pem
+private-key.pem
+.env
+.env.local
+.env.*.local
+
+# Local state (for development)
+# Note: state/ directory is tracked for production use
+state/*.json.bak

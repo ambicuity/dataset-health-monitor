@@ -5,10 +5,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Datasets Health](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/ambicuity/dataset-health-monitor/main/badges/summary.json)](https://github.com/ambicuity/dataset-health-monitor)
+[![GitHub App](https://img.shields.io/badge/GitHub%20App-Install-brightgreen)](https://github.com/apps/dataset-health-monitor)
 
 **Continuous monitoring for ML datasets with automatic GitHub issue creation.**
 
-Dataset Health Monitor is a "CI for datasets" - a production-grade tool that continuously monitors machine learning datasets and automatically detects breakage or integrity issues using GitHub Actions.
+Dataset Health Monitor is a "CI for datasets" - a production-grade tool that continuously monitors machine learning datasets and automatically detects breakage or integrity issues using GitHub Actions. It can also be installed as a **GitHub App** on any repository.
 
 ## 🎯 Features
 
@@ -18,6 +19,7 @@ Dataset Health Monitor is a "CI for datasets" - a production-grade tool that con
 - **Schema Validation**: Detect CSV/JSON header changes
 - **Schema Drift Visualization**: Track and visualize schema changes over time with markdown diff tables
 - **HuggingFace Dataset Support**: Monitor HuggingFace datasets with schema and availability checks
+- **GitHub App**: Installable on any repository with app-based authentication
 - **Automatic Issue Creation**: Opens GitHub Issues with detailed diagnostics and schema drift reports
 - **Smart Issue Management**: Prevents spam and auto-closes issues on recovery
 - **State Persistence**: Tracks dataset health history
@@ -29,8 +31,17 @@ Dataset Health Monitor is a "CI for datasets" - a production-grade tool that con
 .
 ├── README.md                           # This file
 ├── CONTRIBUTING.md                     # Contribution guidelines
+├── DEPLOYMENT.md                       # GitHub App deployment guide
+├── Dockerfile                          # Docker image for GitHub App
+├── docker-compose.yml                  # Docker Compose configuration
 ├── pyproject.toml                      # Python project configuration
 ├── requirements.txt                    # Python dependencies
+├── requirements-app.txt                # GitHub App dependencies
+├── app/                                # GitHub App (Feature 4)
+│   ├── __init__.py
+│   ├── app.py                          # FastAPI application
+│   ├── auth.py                         # GitHub App authentication (JWT)
+│   └── webhook.py                      # Webhook handling
 ├── datasets/
 │   ├── datasets.yaml                   # Dataset configurations (source of truth)
 │   └── examples.yaml                   # Example configurations
@@ -498,6 +509,53 @@ Or install all dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+
+## 🤖 GitHub App
+
+Dataset Health Monitor is available as a GitHub App that can be installed on any repository.
+
+### Features
+
+- **Easy Installation**: One-click install on any repository
+- **Automatic Monitoring**: Reads `datasets/datasets.yaml` from your repo
+- **Issue Creation**: Opens issues in your repository when datasets fail
+- **PR Comments**: Posts status updates on pull requests
+- **App Authentication**: Uses secure GitHub App tokens (no personal access tokens)
+
+### Installation
+
+1. [Install the GitHub App](https://github.com/apps/dataset-health-monitor) on your repository
+2. Add a `datasets/datasets.yaml` file to your repository
+3. The app will automatically monitor your datasets
+
+### Self-Hosting
+
+You can also self-host the GitHub App:
+
+```bash
+# Clone the repository
+git clone https://github.com/ambicuity/dataset-health-monitor.git
+cd dataset-health-monitor
+
+# Run with Docker
+docker-compose up -d
+```
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions including:
+- Creating your own GitHub App
+- Docker deployment
+- Cloud deployment (Render, Fly.io, AWS)
+- Configuration options
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Health check |
+| `/health` | GET | Health check |
+| `/webhook` | POST | GitHub webhook handler |
+| `/installations` | GET | List app installations |
+| `/check/{installation_id}/{owner}/{repo}` | POST | Trigger manual check |
 
 ## 🤝 Contributing
 

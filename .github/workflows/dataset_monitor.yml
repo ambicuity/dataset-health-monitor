@@ -1,0 +1,141 @@
+# Dataset Health Monitor
+# Continuous monitoring for ML datasets with automatic issue creation
+#
+# This workflow runs on a schedule and can be triggered manually.
+# It checks configured datasets for:
+#   - Broken links (HTTP 4xx/5xx, timeouts)
+#   - Missing or deleted files
+#   - Checksum (SHA256) changes
+#   - Schema changes (CSV/JSON header diff)
+#
+# When issues are detected, GitHub Issues are automatically created
+# with detailed diagnostics and appropriate labels.
+
+name: Dataset Health Monitor
+
+on:
+  # Run daily at 6:00 AM UTC
+  schedule:
+    - cron: '0 6 * * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run without creating/closing issues'
+        required: false
+        default: 'false'
+        type: boolean
+      verbose:
+        description: 'Enable verbose logging'
+        required: false
+        default: 'false'
+        type: boolean
+
+  # Run on push to main for testing
+  push:
+    branches:
+      - main
+    paths:
+      - 'datasets/**'
+      - 'scripts/**'
+      - '.github/workflows/dataset_monitor.yml'
+
+  # Run on pull requests for validation
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'datasets/**'
+      - 'scripts/**'
+      - '.github/workflows/dataset_monitor.yml'
+
+# Ensure only one instance runs at a time
+concurrency:
+  group: dataset-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    name: Check Dataset Health
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ensure labels exist
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create labels if they don't exist
+          gh label create "dataset-health" --description "Dataset health monitoring" --color "0366d6" --force || true
+          gh label create "dataset-broken" --description "Dataset URL is broken or inaccessible" --color "d73a4a" --force || true
+          gh label create "checksum-change" --description "Dataset checksum has changed" --color "fbca04" --force || true
+          gh label create "missing-files" --description "Expected files are missing from dataset" --color "e99695" --force || true
+          gh label create "schema-change" --description "Dataset schema has changed" --color "c5def5" --force || true
+
+      - name: Run dataset health checks
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          # Determine flags
+          DRY_RUN_FLAG=""
+          VERBOSE_FLAG=""
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            DRY_RUN_FLAG="--dry-run"
+          elif [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+
+          if [[ "${{ inputs.verbose }}" == "true" ]]; then
+            VERBOSE_FLAG="--verbose"
+          fi
+
+          python -m scripts.monitor \
+            --config datasets/datasets.yaml \
+            --state state/dataset_state.json \
+            $DRY_RUN_FLAG \
+            $VERBOSE_FLAG
+
+      - name: Commit state changes
+        if: github.event_name != 'pull_request'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          # Check if there are changes to commit
+          if git diff --quiet state/dataset_state.json; then
+            echo "No state changes to commit"
+          else
+            git add state/dataset_state.json
+            git commit -m "chore: update dataset state [skip ci]"
+            git push
+          fi
+
+      - name: Upload state artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dataset-state
+          path: state/dataset_state.json
+          retention-days: 30

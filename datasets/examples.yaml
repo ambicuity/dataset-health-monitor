@@ -1,0 +1,123 @@
+# Example Dataset Configurations
+# ===============================
+# This file contains example configurations for various dataset types.
+# Copy relevant sections to datasets.yaml and customize as needed.
+
+datasets:
+  # ----------------------------------------------------------
+  # Example 1: Simple HTTP/HTTPS URL
+  # ----------------------------------------------------------
+  # Just checks if the URL is accessible
+  - name: simple-http-dataset
+    owner: example-org
+    source_url: https://example.com/data/dataset.csv
+    frequency: daily
+
+  # ----------------------------------------------------------
+  # Example 2: Dataset with checksum verification
+  # ----------------------------------------------------------
+  # Verifies the file hasn't changed using SHA256
+  - name: checksummed-dataset
+    owner: research-lab
+    source_url: https://example.com/models/weights.bin
+    checksum: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    frequency: weekly
+
+  # ----------------------------------------------------------
+  # Example 3: CSV file with schema validation
+  # ----------------------------------------------------------
+  # Validates column headers match expected schema
+  - name: structured-csv-dataset
+    owner: data-team
+    source_url: https://example.com/data/users.csv
+    schema:
+      - id
+      - name
+      - email
+      - created_at
+      - updated_at
+    frequency: daily
+
+  # ----------------------------------------------------------
+  # Example 4: JSON file with schema validation
+  # ----------------------------------------------------------
+  # Validates top-level field names match expected schema
+  - name: json-api-response
+    owner: api-team
+    source_url: https://api.example.com/v1/export.json
+    schema:
+      - version
+      - data
+      - metadata
+      - timestamp
+    frequency: daily
+
+  # ----------------------------------------------------------
+  # Example 5: GitHub repository with expected files
+  # ----------------------------------------------------------
+  # Checks that specific files exist in the repository
+  - name: ml-model-repo
+    owner: ml-team
+    source_url: https://github.com/example-org/ml-model
+    branch: main
+    expected_files:
+      - README.md
+      - model/config.json
+      - model/weights.h5
+      - requirements.txt
+    frequency: daily
+
+  # ----------------------------------------------------------
+  # Example 6: Zip archive with expected contents
+  # ----------------------------------------------------------
+  # Downloads and inspects archive contents
+  - name: training-data-archive
+    owner: training-team
+    source_url: https://example.com/releases/training-data-v1.zip
+    expected_files:
+      - train.csv
+      - test.csv
+      - validation.csv
+      - metadata.json
+    checksum: sha256:abc123...
+    frequency: weekly
+
+  # ----------------------------------------------------------
+  # Example 7: Cloud storage (public URL)
+  # ----------------------------------------------------------
+  # Works with publicly accessible cloud storage URLs
+  - name: s3-public-dataset
+    owner: aws-public-datasets
+    source_url: https://s3.amazonaws.com/bucket-name/dataset.parquet
+    frequency: daily
+
+  # ----------------------------------------------------------
+  # Example 8: Google Cloud Storage (public URL)
+  # ----------------------------------------------------------
+  - name: gcs-public-dataset
+    owner: gcp-public-datasets
+    source_url: https://storage.googleapis.com/bucket-name/dataset.csv
+    schema:
+      - feature1
+      - feature2
+      - label
+    frequency: weekly
+
+  # ----------------------------------------------------------
+  # Example 9: Hugging Face dataset
+  # ----------------------------------------------------------
+  - name: huggingface-dataset
+    owner: huggingface
+    source_url: https://huggingface.co/datasets/squad/resolve/main/squad.py
+    frequency: weekly
+
+  # ----------------------------------------------------------
+  # Example 10: Raw GitHub file
+  # ----------------------------------------------------------
+  - name: github-raw-file
+    owner: community
+    source_url: https://raw.githubusercontent.com/owner/repo/main/data/dataset.json
+    schema:
+      - records
+      - version
+    frequency: daily

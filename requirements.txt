@@ -1,0 +1,7 @@
+# Dataset Health Monitor - Python Dependencies
+# =============================================
+# Install with: pip install -r requirements.txt
+
+# Core dependencies
+requests>=2.31.0
+pyyaml>=6.0.1

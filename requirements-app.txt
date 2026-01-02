@@ -1,0 +1,17 @@
+# Dataset Health Monitor GitHub App - Additional Dependencies
+# ===========================================================
+# These are additional dependencies required for the GitHub App.
+# Install with: pip install -r requirements-app.txt
+#
+# Note: Also requires dependencies from requirements.txt
+
+# Web framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.24.0
+
+# GitHub App authentication
+PyJWT>=2.8.0
+cryptography>=42.0.4
+
+# Pydantic for data validation (comes with FastAPI)
+pydantic>=2.5.0

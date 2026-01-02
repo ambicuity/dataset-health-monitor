@@ -1,0 +1,45 @@
+# Dataset Health Monitor Configuration
+# =====================================
+# This file defines the datasets to monitor for health checks.
+#
+# Each dataset entry must include:
+#   - name: Unique identifier for the dataset
+#   - owner: Organization or user who owns the dataset
+#   - source_url: HTTP/HTTPS URL to the dataset
+#   - expected_files: List of files expected in the dataset (optional)
+#   - checksum: SHA256 checksum for verification (optional)
+#   - schema: Expected column/field names for CSV/JSON files (optional)
+#   - frequency: Check frequency - daily or weekly (default: daily)
+#   - branch: Git branch for GitHub repos (default: main)
+
+datasets:
+  # Example: GitHub hosted COVID-19 dataset with schema validation
+  - name: covid-19-data
+    owner: datasets
+    source_url: https://raw.githubusercontent.com/datasets/covid-19/main/data/countries-aggregated.csv
+    schema:
+      - Date
+      - Country
+      - Confirmed
+      - Recovered
+      - Deaths
+    frequency: daily
+
+  # Example: GitHub repository with expected files
+  - name: awesome-python
+    owner: vinta
+    source_url: https://github.com/vinta/awesome-python
+    branch: master
+    expected_files:
+      - README.md
+    frequency: weekly
+
+  # Example: Raw GitHub file (JSON)
+  - name: package-json-sample
+    owner: npm
+    source_url: https://raw.githubusercontent.com/npm/cli/latest/package.json
+    schema:
+      - name
+      - version
+      - description
+    frequency: weekly

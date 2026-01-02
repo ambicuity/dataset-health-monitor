@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "label": "datasets health",
-  "message": "3/3 healthy",
+  "label": "package-json-sample",
+  "message": "healthy",
   "color": "brightgreen",
   "namedLogo": "databricks",
   "logoColor": "white"

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "label": "datasets health",
-  "message": "3/3 healthy",
+  "label": "awesome-python uptime",
+  "message": "100.0%",
   "color": "brightgreen",
   "namedLogo": "databricks",
   "logoColor": "white"

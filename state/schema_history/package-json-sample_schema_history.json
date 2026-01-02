@@ -1,0 +1,58 @@
+{
+  "dataset_name": "package-json-sample",
+  "last_updated": "2026-01-02T23:20:37.914244+00:00",
+  "history": [
+    {
+      "timestamp": "2026-01-02T23:20:37.914216+00:00",
+      "schema_hash": "6bcc8cefaf64cb3b",
+      "columns": [
+        "version",
+        "name",
+        "description",
+        "workspaces",
+        "files",
+        "keywords",
+        "homepage",
+        "author",
+        "repository",
+        "bugs",
+        "directories",
+        "main",
+        "bin",
+        "exports",
+        "dependencies",
+        "bundleDependencies",
+        "devDependencies",
+        "scripts",
+        "tap",
+        "templateOSS",
+        "license",
+        "engines"
+      ],
+      "column_types": {
+        "version": "string",
+        "name": "string",
+        "description": "string",
+        "workspaces": "array",
+        "files": "array",
+        "keywords": "array",
+        "homepage": "string",
+        "author": "string",
+        "repository": "object",
+        "bugs": "object",
+        "directories": "object",
+        "main": "string",
+        "bin": "object",
+        "exports": "object",
+        "dependencies": "object",
+        "bundleDependencies": "array",
+        "devDependencies": "object",
+        "scripts": "object",
+        "tap": "object",
+        "templateOSS": "object",
+        "license": "string",
+        "engines": "object"
+      }
+    }
+  ]
+}

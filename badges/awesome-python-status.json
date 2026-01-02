@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "label": "datasets health",
-  "message": "3/3 healthy",
+  "label": "awesome-python",
+  "message": "healthy",
   "color": "brightgreen",
   "namedLogo": "databricks",
   "logoColor": "white"

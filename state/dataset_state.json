@@ -1,11 +1,11 @@
 {
   "version": "1.0",
-  "last_run_timestamp": "2026-01-14T06:42:41.072307+00:00",
+  "last_run_timestamp": "2026-01-15T06:42:28.508942+00:00",
   "datasets": {
     "covid-19-data": {
       "name": "covid-19-data",
-      "last_check_timestamp": "2026-01-14T06:42:40.023524+00:00",
-      "last_success_timestamp": "2026-01-14T06:42:40.023524+00:00",
+      "last_check_timestamp": "2026-01-15T06:42:27.289965+00:00",
+      "last_success_timestamp": "2026-01-15T06:42:27.289965+00:00",
       "checksum": "sha256:fbd1738729a2ebac655e08fcd9562b5cf71573a8b9c03f809c2cf2c53faf047f",
       "file_sizes": {},
       "schema_hash": "936311ce8a9b6d75",
@@ -72,16 +72,20 @@
         {
           "timestamp": "2026-01-14T06:42:40.023529+00:00",
           "is_healthy": true
+        },
+        {
+          "timestamp": "2026-01-15T06:42:27.289972+00:00",
+          "is_healthy": true
         }
       ]
     },
     "awesome-python": {
       "name": "awesome-python",
-      "last_check_timestamp": "2026-01-14T06:42:40.755910+00:00",
-      "last_success_timestamp": "2026-01-14T06:42:40.755910+00:00",
-      "checksum": "sha256:0d22b8e3b50e2db08889e12bc5d4c320d28f21db2eee4da2542ca8e6d95a57a3",
+      "last_check_timestamp": "2026-01-15T06:42:28.192721+00:00",
+      "last_success_timestamp": "2026-01-15T06:42:28.192721+00:00",
+      "checksum": "sha256:860f6942794dd6a3af6bbafa80990f0579391b706dcdc36ca66b9effea704bb4",
       "file_sizes": {
-        "README.md": 25877
+        "README.md": 26169
       },
       "schema_hash": null,
       "schema": null,
@@ -141,13 +145,17 @@
         {
           "timestamp": "2026-01-14T06:42:40.755927+00:00",
           "is_healthy": true
+        },
+        {
+          "timestamp": "2026-01-15T06:42:28.192742+00:00",
+          "is_healthy": true
         }
       ]
     },
     "package-json-sample": {
       "name": "package-json-sample",
-      "last_check_timestamp": "2026-01-14T06:42:41.072277+00:00",
-      "last_success_timestamp": "2026-01-14T06:42:41.072277+00:00",
+      "last_check_timestamp": "2026-01-15T06:42:28.508905+00:00",
+      "last_success_timestamp": "2026-01-15T06:42:28.508905+00:00",
       "checksum": "sha256:565f417086524394a56a09588d450524a4c92f543101a990adb2bba962e27625",
       "file_sizes": {},
       "schema_hash": "6bcc8cefaf64cb3b",
@@ -230,6 +238,10 @@
         },
         {
           "timestamp": "2026-01-14T06:42:41.072283+00:00",
+          "is_healthy": true
+        },
+        {
+          "timestamp": "2026-01-15T06:42:28.508911+00:00",
           "is_healthy": true
         }
       ]
